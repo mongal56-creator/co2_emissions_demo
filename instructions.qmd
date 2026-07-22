@@ -1,9 +1,6 @@
 ---
-title: "CO2 Emissions: Table, Trends, and Global Map"
-author: "Mongal S Gurung"
+title: "Workshop Exercise: Emissions Data - Table, Map, and Chart"
 format: html
-execute:
-  echo: false
 ---
 
 # Introduction
