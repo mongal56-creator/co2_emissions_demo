@@ -1,0 +1,217 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "---\n",
+        "title: \"CO2 Emissions: Table, Trends, and Global Map\"\n",
+        "author: \"Mongal S Gurung\"\n",
+        "format: html\n",
+        "execute:\n",
+        "  echo: false\n",
+        "---\n",
+        "\n",
+        "# Introduction\n",
+        "\n",
+        "This report explores global CO2 emissions data from Gapminder. It presents an interactive table showing changes in emissions between 2000 and 2022, a line chart comparing emission trends in five selected countries from 1990 to 2022, and an animated choropleth map showing changes in CO2 emissions worldwide."
+      ],
+      "id": "a1f84783"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "import pandas as pd\n",
+        "import plotly.express as px\n",
+        "from itables import show\n",
+        "\n",
+        "# Load the data\n",
+        "emissions = pd.read_csv(\"data/co2_cons.csv\")"
+      ],
+      "id": "7fca7686",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "# Data Preparation"
+      ],
+      "id": "d074c554"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "# Create table dataset\n",
+        "table_df = emissions[[\"name\", \"2000\", \"2022\"]].copy()\n",
+        "\n",
+        "# Calculate absolute change\n",
+        "table_df[\"Absolute Change\"] = (\n",
+        "    table_df[\"2022\"] - table_df[\"2000\"]\n",
+        ")\n",
+        "\n",
+        "# Calculate relative change\n",
+        "table_df[\"Relative Change\"] = (\n",
+        "    table_df[\"Absolute Change\"] / table_df[\"2000\"]\n",
+        ") * 100\n",
+        "\n",
+        "# Round relative change and add percentage sign\n",
+        "table_df[\"Relative Change\"] = (\n",
+        "    table_df[\"Relative Change\"]\n",
+        "    .round(0)\n",
+        "    .astype(str)\n",
+        "    + \"%\"\n",
+        ")\n",
+        "\n",
+        "# Reshape emissions data from wide to long format\n",
+        "emissions_long = emissions.melt(\n",
+        "    id_vars=[\"geo\", \"name\"],\n",
+        "    var_name=\"year\",\n",
+        "    value_name=\"emissions\"\n",
+        ")\n",
+        "\n",
+        "# Convert year to numeric\n",
+        "emissions_long[\"year\"] = pd.to_numeric(\n",
+        "    emissions_long[\"year\"],\n",
+        "    errors=\"coerce\"\n",
+        ")\n",
+        "\n",
+        "# Convert emissions to numeric\n",
+        "emissions_long[\"emissions\"] = pd.to_numeric(\n",
+        "    emissions_long[\"emissions\"]\n",
+        "    .astype(str)\n",
+        "    .str.replace(\"−\", \"-\")\n",
+        ")\n",
+        "\n",
+        "# Keep years from 1990 to 2022\n",
+        "emissions_long_1990_2022 = emissions_long.query(\n",
+        "    \"year >= 1990 and year <= 2022\"\n",
+        ").copy()\n",
+        "\n",
+        "# Select five countries using ISO3 country codes\n",
+        "emissions_long_subset = emissions_long_1990_2022.query(\n",
+        "    \"geo in ['btn', 'ind', 'chn', 'usa', 'gbr']\"\n",
+        ").copy()\n",
+        "\n",
+        "# Create line chart\n",
+        "fig_chart = px.line(\n",
+        "    emissions_long_subset,\n",
+        "    x=\"year\",\n",
+        "    y=\"emissions\",\n",
+        "    color=\"name\",\n",
+        "    title=\"CO2 Emissions Trends, 1990–2022\",\n",
+        "    labels={\n",
+        "        \"year\": \"Year\",\n",
+        "        \"emissions\": \"CO2 Emissions\",\n",
+        "        \"name\": \"Country\"\n",
+        "    }\n",
+        ")\n",
+        "\n",
+        "# Prepare ISO3 codes for mapping\n",
+        "emissions_long_1990_2022[\"country_code\"] = (\n",
+        "    emissions_long_1990_2022[\"geo\"].str.upper()\n",
+        ")\n",
+        "\n",
+        "# Create animated choropleth map\n",
+        "fig_map = px.choropleth(\n",
+        "    emissions_long_1990_2022,\n",
+        "    locations=\"country_code\",\n",
+        "    color=\"emissions\",\n",
+        "    hover_name=\"name\",\n",
+        "    animation_frame=\"year\",\n",
+        "    title=\"Global CO2 Emissions, 1990–2022\"\n",
+        ")"
+      ],
+      "id": "a0f47d94",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "# CO2 Emissions Dashboard\n",
+        "\n",
+        "The tabs below provide three complementary views of the CO2 emissions data. The table summarizes changes between 2000 and 2022, the chart compares trends across five selected countries, and the map shows the global distribution of emissions over time.\n",
+        "\n",
+        "::: {.panel-tabset}\n",
+        "\n",
+        "## Table\n",
+        "\n",
+        "The table presents CO2 emissions in 2000 and 2022 and the corresponding absolute and relative changes for each country."
+      ],
+      "id": "800d72e6"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "show(table_df)"
+      ],
+      "id": "984daeec",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## Chart\n",
+        "\n",
+        "The chart compares CO2 emission trends from 1990 to 2022 for Bhutan, India, China, the United States, and the United Kingdom."
+      ],
+      "id": "82db2c2c"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "fig_chart.show()"
+      ],
+      "id": "8c308905",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## Map\n",
+        "\n",
+        "The animated map shows how the global distribution of CO2 emissions changed between 1990 and 2022. Use the animation controls to explore changes over time."
+      ],
+      "id": "082b9085"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "fig_map.show()"
+      ],
+      "id": "09e0c414",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        ":::"
+      ],
+      "id": "73ce764c"
+    }
+  ],
+  "metadata": {
+    "kernelspec": {
+      "name": "python3",
+      "language": "python",
+      "display_name": "Python 3 (ipykernel)",
+      "path": "/Users/mongal/Documents/GitHub/co2_emissions_demo/.venv/share/jupyter/kernels/python3"
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 5
+}
