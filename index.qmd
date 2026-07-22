@@ -18,7 +18,6 @@ import plotly.express as px
 emissions = pd.read_csv("data/co2_cons.csv")
 ```
 
-# Data Preparation
 
 ```{python}
 # Create table dataset
