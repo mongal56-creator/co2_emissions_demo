@@ -8,192 +8,131 @@ execute:
 
 # Introduction
 
-In this exercise, you will work with a CO2 emissions dataset downloaded from Gapminder and produce a report with three tabs: a data table, a line chart, and a choropleth map. 
-
-The goal is to roughly replicate the [Our World in Data visualization page on consumption-based CO<sub>2</sub> emissions](https://ourworldindata.org/grapher/consumption-co2-emissions?tab=table&time=2000..2022).
-
-Be sure to view that page to get an idea of the final product.
-
-# Setup
-
-- You should have forked and cloned this repository to your local machine.
-
-- Now, create and select a virtual environment in VSCode.
-
-- Install the following packages: 
-  - pandas
-  - plotly
-  - itables
-  - ipykernel
-  - jupyter
-
-- Download the data from [Gapminder](https://www.gapminder.org/data/) by selecting: *Environment > Emissions > CO2 Total emissions*, then downloading the CSV file into a `data` folder in your repository. NOTE: IT is important that you select `CO2 Total emissions` and not `CO2 emissions per capita` or any of the other CO2 related datasets.
-
-# Data Import
-
-Run the following code to import the necessary libraries:
+This report explores global CO2 emissions data from Gapminder. It presents an interactive table showing changes in emissions between 2000 and 2022, a line chart comparing emission trends in five selected countries from 1990 to 2022, and an animated choropleth map showing changes in CO2 emissions worldwide.
 
 ```{python}
 import pandas as pd
 import plotly.express as px
-from itables import show
-```
 
-Load in your dataset from gapminder below. View it in your data viewer to get an idea of the structure.
-
-```{python}
 # Load the data
 emissions = pd.read_csv("data/co2_cons.csv")
-emissions
 ```
 
-# Table Section
-
-Our goal is to create a table showing emissions for a few selected years and calculate absolute and relative changes.
-
-1. Subset the data to include `name`, `2000`, and `2022` columns only. The `name` column contains the country names.
-2. Calculate an "Absolute Change" column as the difference between 2022 and 2000.
-3. Calculate a "Relative Change" column as the absolute change divided by the 2000 emissions, then multiplied by 100.
+# Data Preparation
 
 ```{python}
-# Subset the data to include `name`, `2000`, and `2022` columns only.
+# Create table dataset
 table_df = emissions[["name", "2000", "2022"]].copy()
 
-# Calculate absolute change as the difference between 2022 and 2000
-table_df["Absolute Change"] = table_df["2022"] - table_df["2000"]
+# Calculate absolute change
+table_df["Absolute Change"] = (
+    table_df["2022"] - table_df["2000"]
+)
 
-# Calculate relative change as the absolute change divided by the 2000 emissions, then multiplied by 100
-table_df["Relative Change"] = ( table_df["Absolute Change"] / table_df["2000"] ) * 100
-
-# Round to 0 decimal places, and add a % sign to the relative change
+# Calculate relative change
 table_df["Relative Change"] = (
-  table_df["Relative Change"].round(0).astype(str) + "%" 
+    table_df["Absolute Change"] / table_df["2000"]
+) * 100
+
+# Round relative change and add percentage sign
+table_df["Relative Change"] = (
+    table_df["Relative Change"]
+    .round(0)
+    .astype(str)
+    + "%"
 )
-```
 
-Now we can display this as an interactive table with itables:
-
-```{python}
-show(table_df)
-```
-
-# Chart Section
-
-Our goal is to create a line chart from 1990 to 2022 for a few selected countries.
-
-1. Melt the original `emissions` dataset so that years become rows. Keep both `geo` and `name` as identifier columns.
-2. Filter from 1990 to 2022 only.
-3. Choose 5 countries of your choice.
-4. Create a line chart showing emissions over time for the selected countries with Plotly Express.
-
-```{python}
-# Melt the original `emissions` dataset. Your id_vars should be
-# ["geo", "name"], your var_name should be "year", and your
-# value_name should be "emissions".
+# Reshape emissions data from wide to long format
 emissions_long = emissions.melt(
-    id_vars=["geo", "name"], var_name="year", value_name="emissions"
+    id_vars=["geo", "name"],
+    var_name="year",
+    value_name="emissions"
 )
 
-# Convert year to numeric using pd.to_numeric
-emissions_long["year"] = pd.to_numeric(emissions_long["year"], errors="coerce")
+# Convert year to numeric
+emissions_long["year"] = pd.to_numeric(
+    emissions_long["year"],
+    errors="coerce"
+)
 
-# Convert emissions to numeric using pd.to_numeric. Here, we also convert dashes to the minus sign
+# Convert emissions to numeric
 emissions_long["emissions"] = pd.to_numeric(
-    emissions_long["emissions"].astype(str).str.replace("−", "-")
+    emissions_long["emissions"]
+    .astype(str)
+    .str.replace("−", "-")
 )
 
-# Query for years between 1990 and 2022 (that is 1990, 1991, ..., 2021, 2022)
-emissions_long_1990_2022 = emissions_long.query("year >= 1990 and year <= 2022").copy()
+# Keep years from 1990 to 2022
+emissions_long_1990_2022 = emissions_long.query(
+    "year >= 1990 and year <= 2022"
+).copy()
 
-# Query for 5 countries using the `name` column (adjust these to any countries you like)
+# Select five countries using ISO3 country codes
 emissions_long_subset = emissions_long_1990_2022.query(
     "geo in ['btn', 'ind', 'chn', 'usa', 'gbr']"
 ).copy()
 
-# Create line chart. Year should be on the x-axis, emissions on the y-axis, and color should be by name.
+# Create line chart
 fig_chart = px.line(
     emissions_long_subset,
     x="year",
     y="emissions",
     color="name",
-    title="CO2 Emissions Trends, 1990-2022",
-    labels={"year": "Year", "emissions": "CO2 Emissions", "name": "Country"},
+    title="CO2 Emissions Trends, 1990–2022",
+    labels={
+        "year": "Year",
+        "emissions": "CO2 Emissions",
+        "name": "Country"
+    }
 )
 
-fig_chart.show()
-```
+# Prepare ISO3 codes for mapping
+emissions_long_1990_2022["country_code"] = (
+    emissions_long_1990_2022["geo"].str.upper()
+)
 
-
-# Mapping Section
-
-This part is done for you.
-
-**Goal:** Create a choropleth map showing global emissions from 1990 to 2022.  
-
-This will be animated by year.
-
-1. Use the 3-letter country codes already provided in the `geo` column.
-2. Convert those codes to uppercase.
-3. Create a map with `px.choropleth` and use `animation_frame` to show changes over time.
-
-```{python}
-# Convert the existing ISO3 codes to uppercase
-emissions_long_1990_2022["country_code"] = emissions_long_1990_2022["geo"].str.upper()
-
+# Create animated choropleth map
 fig_map = px.choropleth(
     emissions_long_1990_2022,
     locations="country_code",
     color="emissions",
     hover_name="name",
     animation_frame="year",
-    title="Global CO2 Emissions (1990-2022)",
+    title="Global CO2 Emissions, 1990–2022"
 )
-
-fig_map.show()
 ```
 
+# CO2 Emissions Dashboard
 
-# Final Tabset
-
-Below, we place our results into a tabbed interface.
+The tabs below provide three complementary views of the CO2 emissions data. The table summarizes changes between 2000 and 2022, the chart compares trends across five selected countries, and the map shows the global distribution of emissions over time.
 
 ::: {.panel-tabset}
 
 ## Table
 
+The table presents CO2 emissions in 2000 and 2022 and the corresponding absolute and relative changes for each country.
+
 ```{python}
-show(table_df)
+# Use Quarto's native engine to print dataframes natively
+table_df
 ```
 
 ## Chart
 
+The chart compares CO2 emission trends from 1990 to 2022 for Bhutan, India, China, the United States, and the United Kingdom.
+
 ```{python}
-fig_chart.show()
+# Do not use .show() – just leave the object name to render cleanly into HTML
+fig_chart
 ```
 
 ## Map
 
+The animated map shows how the global distribution of CO2 emissions changed between 1990 and 2022. Use the animation controls to explore changes over time.
+
 ```{python}
-fig_map.show()
+# Do not use .show() – just leave the object name to render cleanly into HTML
+fig_map
 ```
 
 :::
-
-# Deploying to GitHub Pages
-
-As a final step, you should follow the steps outlined in the prework to deploy your report to GitHub Pages. You will be asked to share a link to your report in the course portal.
-
-GitHub Pages shows `index.html` as the main page of your site. Quarto creates `index.html` from `index.qmd`.
-
-## Optional Ungraded challenge
-
-Right now, `index.qmd` contains workshop instructions and practice code. That is useful while you work, but it does not look like a finished report.
-
-To make a cleaner report for your website:
-
-1. Copy the instructions into a new file, such as `instructions.qmd`.
-2. Edit `index.qmd` so it mainly contains your analysis code and the final table, chart, and map.
-3. Add a clear title (and your name, if you want) in the YAML header at the top.
-4. Add `#| echo: false` to code chunks if you want to hide the code and show only the output.
-
-Your published page should be easy to read: mainly the results, not the workshop instructions.
