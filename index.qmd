@@ -1,6 +1,6 @@
 ---
 title: "CO2 Emissions: Table, Trends, and Global Map"
-author: "Mongal S Gurung"
+author: "Mongal Singh Gurung"
 format: html
 execute:
   echo: false
